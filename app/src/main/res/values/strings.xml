@@ -3,4 +3,5 @@
     <string name="kmh">%s km/h</string>
     <string name="lat">LAT: %s</string>
     <string name="longitude">LONG: %s</string>
+    <string name="gps_not_granted">La app necesita permiso para acceder al gps para obtener la velocidad</string>
 </resources>
