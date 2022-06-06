@@ -1,8 +1,8 @@
-package es.upm.karthud
+package es.upm.karthud.track
 
+import android.location.Location
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 
 class Circuit(val endLine: Checkpoint)
 {
@@ -13,8 +13,8 @@ class Circuit(val endLine: Checkpoint)
     //only used for intersectionInEndLine
     private val maxLatitude: Double by lazy { max(endLine.beacon1.latitude, endLine.beacon2.latitude) }
     private val minLatitude: Double by lazy { min(endLine.beacon1.latitude, endLine.beacon2.latitude) }
-    private val maxLongitude: Double by lazy { max(endLine.beacon1.latitude, endLine.beacon2.latitude) }
-    private val minLongitude: Double by lazy { min(endLine.beacon1.latitude, endLine.beacon2.latitude) }
+    private val maxLongitude: Double by lazy { max(endLine.beacon1.longitude, endLine.beacon2.longitude) }
+    private val minLongitude: Double by lazy { min(endLine.beacon1.longitude, endLine.beacon2.longitude) }
 
 
     private fun computeM(startCoord: Coord, endCoord: Coord): Double
@@ -31,24 +31,32 @@ class Circuit(val endLine: Checkpoint)
     {
         val mLine: Double = computeM(startCoord, endCoord)
         val aLine: Double = computeA(mLine, startCoord)
-        val interLatitude: Double = (aLine - aEndLine)/(mLine - mEndLine)
+        val interLatitude: Double = (aLine - aEndLine)/(mEndLine - mLine)
         val interLongitude : Double = (mLine*interLatitude) + aLine
         return Coord(interLatitude, interLongitude)
     }
 
-    fun intersectionInEndLine(point: Coord): Boolean
+    private fun intersectionInEndLine(point: Coord): Boolean
     {
         return (point.latitude in minLatitude..maxLatitude) && (point.longitude in minLongitude..maxLongitude)
     }
 
-    fun computeMilisecondLap(startCoord: Coord, endCoord: Coord): Double
+    private fun lineRatio(startCoord: Coord, endCoord: Coord, intersection: Coord): Double
     {
-        val intersection: Coord = computeIntersection(startCoord, endCoord)
         return (intersection.latitude - startCoord.latitude)/(endCoord.latitude-startCoord.latitude)
     }
 
-    fun computeMilisecondTimestamp(startCoord: Coord, endCoord: Coord): Int
+    fun timeStampLineCrossed(previousLocation: Location, actualLocation: Location): Long?
     {
-        return (computeMilisecondLap(startCoord, endCoord) * 1000.0).roundToInt()
+        var result: Long? = null
+        val previousCoord = Coord(previousLocation.latitude, previousLocation.longitude)
+        val actualCoord = Coord(actualLocation.latitude, actualLocation.longitude)
+        val intersection: Coord = computeIntersection(previousCoord,actualCoord)
+        if (intersectionInEndLine(intersection))
+        {
+            val ratio: Double = lineRatio(previousCoord, actualCoord, intersection)
+            result = (previousLocation.time + ((actualLocation.time - previousLocation.time) * ratio).toLong())
+        }
+        return result
     }
 }

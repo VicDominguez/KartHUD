@@ -2,8 +2,10 @@
     <string name="app_name">KartHUD</string>
     <string name="kmh">%s km/h</string>
     <string name="lap">Vuelta: %d</string>
-    <string name="temp">Temperatura: %d ºC</string>
-    <string name="gForce">Fuerza G: %.2f G</string>
+    <string name="temp">%d ºC</string>
+    <string name="gForce">%.2f G</string>
+    <string name="bestLapTime">Mejor vuelta: %s</string>
+    <string name="lastLapTime">Última vuelta: %s</string>
     <string name="gps_not_granted">La app necesita permiso para acceder al gps para obtener la velocidad</string>
     <string name="accelerometer_not_available">Acelerómetro no disponible, no se muestran las fuerzas G"</string>
     <string name="weather_not_available">Servicio de previsión del tiempo no disponible</string>

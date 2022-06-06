@@ -6,7 +6,6 @@ package es.upm.karthud
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -15,12 +14,20 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
-import android.util.Log
+import android.os.SystemClock
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import es.upm.karthud.databinding.ActivityMainBinding
-import es.upm.karthud.weather.APIService
+import es.upm.karthud.track.Checkpoint
+import es.upm.karthud.track.Circuit
+import es.upm.karthud.track.Coord
+import es.upm.karthud.weather.OpenWeatherMapAPI
+import java.lang.Exception
+import java.util.Timer
+import kotlin.concurrent.schedule
+import kotlin.math.roundToInt
+import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,10 +35,7 @@ import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.lang.Exception
-import java.util.Timer
-import kotlin.concurrent.schedule
-import kotlin.math.roundToInt
+
 
 class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener, EasyPermissions.PermissionCallbacks
 {
@@ -69,12 +73,16 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
     //variables
     private var speed: Float = 0.0f
     private var lap: Int = 0
+    private var timestampStartLap : Long = 0
+    private var timestampEndLap : Long? = null
+
+    private var bestLap : Long = Long.MAX_VALUE
 
     private var lastLocation: Location? = null
-
+    private var lapTimes : ArrayList<Long> = arrayListOf<Long>()
     private var circuit: Circuit = Circuit(Checkpoint(
-        Coord(40.087692916294074, -6.350750671809091),
-        Coord(40.08765136226703, -6.350748660152493))) //calle la paz
+        Coord(40.43009068580006, -3.4454841660571036),
+        Coord(40.430592940063164, -3.4446419524948317))) //rotonda henakart
 
     /*
     ---------------------------------------------------------
@@ -86,6 +94,11 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        binding.chronometer.start()
 
         startAccelerometer()
         checkAndStartGPS()
@@ -211,20 +224,58 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         Callback de LocationListener
     ---------------------------------------------------------
      */
+
+
+    private fun longToStringTime(l: Long): String
+    {
+        fun Long.format(digits: Int) = "%0${digits}d".format(this)
+
+        val miliSeconds = l % 1000
+        val seconds = (l / 1000) % 60
+        val minutes = (l / 1000) / 60
+        return "$minutes:${seconds.format(2)}:${miliSeconds.format(3)}"
+    }
+
+    private fun updateUILaps()
+    {
+        binding.bestLapTime.visibility = View.VISIBLE
+        binding.lastLapTime.visibility = View.VISIBLE
+
+        binding.bestLapTime.text = getString(R.string.bestLapTime, longToStringTime(bestLap))
+        binding.lastLapTime.text = getString(R.string.lastLapTime, longToStringTime(lapTimes.last()))
+    }
+
     override fun onLocationChanged(l: Location)
     {
-        if (lastLocation != null)
+        //cuando empieza la app
+        if (lastLocation == null)
         {
-            if(circuit.intersectionInEndLine(Coord(l.latitude, l.longitude)))
-            {
-                lap++
-            }
+            timestampStartLap = l.time
         }
-        lastLocation = l
+        //si tenemos dos puntos vemos si hay corte
+        lastLocation?.let { itLocation ->
+            timestampEndLap = circuit.timeStampLineCrossed(itLocation, l) //null si no hay corte, timestamp si lo hay
+            timestampEndLap?.let { itLong ->
+                if (lap > 0)
+                {
+                    val timeElapsed = itLong-timestampStartLap
+                    if(timeElapsed < bestLap)
+                        bestLap = timeElapsed
+                    lapTimes.add(timeElapsed)
+                    updateUILaps()
+                }
+                lap++
+                timestampStartLap = itLong
+                //faltaria cuadrar bien los ms
+                binding.chronometer.base = SystemClock.elapsedRealtime()
+                }
+        }
 
+        lastLocation = l
         speed = ((l.speed * msToKmh * 10.0).roundToInt() / 10.0).toFloat()
-        binding.speedText.text = getString(R.string.kmh,speed.toString())
+
         binding.lapText.text = getString(R.string.lap, lap)
+        binding.speedText.text = getString(R.string.kmh,speed.toString())
     }
 
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) {}
@@ -245,7 +296,7 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
          */
         if (se != null)
         {
-            val lat = se.values[1].toDouble() / SensorManager.GRAVITY_EARTH
+            val lat = abs(se.values[1].toDouble()) / SensorManager.GRAVITY_EARTH
             binding.gForceText.text = getString(R.string.gForce, lat)
         }
 
@@ -262,10 +313,9 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
     private fun getTemperature(c: Coord)
     {
         CoroutineScope(Dispatchers.IO).launch {
-            Log.d("MainActivity","lanzada la corrutina")
             try {
                 val call = getRetrofit()
-                    .create(APIService::class.java)
+                    .create(OpenWeatherMapAPI::class.java)
                     .oneCallAPI(
                         c.latitude,
                         c.longitude,
@@ -273,9 +323,7 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
                         "es",
                         "metric"
                     )
-                Log.d("MainActivity","hecha la call")
                 val response = call.body()
-                Log.d("MainActivity","vamos al thread ui")
                 runOnUiThread {
                     if(call.isSuccessful)
                     {

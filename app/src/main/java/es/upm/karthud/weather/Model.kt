@@ -1,10 +1,12 @@
-/*
-Realizada con https://json2kt.com/
+/**
+ * Model.kt alberga todas las data class utilizadas para la API de OpenWeatherMap
+ * Realizada con https://json2kt.com/
+ * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
  */
+
 package es.upm.karthud.weather
 
 import com.google.gson.annotations.SerializedName
-
 
 data class WeatherResponse (
     @SerializedName("coord"      ) var coord      : Coord?             = Coord(),

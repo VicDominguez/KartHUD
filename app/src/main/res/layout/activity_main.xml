@@ -12,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="25dp"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="25dp"
         android:text="@string/temp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -21,28 +21,60 @@
         android:id="@+id/lapText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="25dp"
         android:text="@string/lap"
-        app:layout_constraintStart_toStartOf="@+id/tempText"
-        app:layout_constraintTop_toBottomOf="@+id/tempText" />
+        app:layout_constraintStart_toStartOf="@id/tempText"
+        app:layout_constraintTop_toBottomOf="@id/tempText" />
+
+    <TextView
+        android:id="@+id/lastLapTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="25dp"
+        android:text="@string/lastLapTime"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="@+id/lapText"
+        app:layout_constraintTop_toBottomOf="@+id/lapText" />
+
+    <TextView
+        android:id="@+id/bestLapTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="25dp"
+        android:text="@string/bestLapTime"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="@+id/lastLapTime"
+        app:layout_constraintTop_toBottomOf="@+id/lastLapTime" />
 
     <TextView
         android:id="@+id/speedText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="500dp"
+        android:textSize="35sp"
+        android:layout_marginBottom="50dp"
         android:text="@string/kmh"
-        app:layout_constraintStart_toEndOf="@+id/tempText"
-        app:layout_constraintTop_toTopOf="@+id/tempText" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/bestLapTime" />
 
     <TextView
         android:id="@+id/gForceText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="50dp"
+        android:layout_marginStart="100dp"
         android:text="@string/gForce"
-        app:layout_constraintEnd_toEndOf="@+id/speedText"
-        app:layout_constraintTop_toBottomOf="@+id/speedText" />
+        android:textSize="35sp"
+        app:layout_constraintBottom_toBottomOf="@+id/chronometer"
+        app:layout_constraintStart_toEndOf="@+id/chronometer" />
+
+    <Chronometer
+        android:id="@+id/chronometer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="100dp"
+        android:textAppearance="@style/TextAppearance.AppCompat.Large"
+        android:textSize="35sp"
+        app:layout_constraintBottom_toBottomOf="@+id/speedText"
+        app:layout_constraintStart_toEndOf="@+id/speedText" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
