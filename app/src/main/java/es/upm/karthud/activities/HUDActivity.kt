@@ -2,7 +2,7 @@
  * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
  */
 
-package es.upm.karthud
+package es.upm.karthud.activities
 
 import android.annotation.SuppressLint
 import android.hardware.Sensor
@@ -17,7 +17,8 @@ import android.os.SystemClock
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import es.upm.karthud.databinding.ActivityMainBinding
+import es.upm.karthud.*
+import es.upm.karthud.databinding.ActivityHudBinding
 import es.upm.karthud.track.Checkpoint
 import es.upm.karthud.track.Circuit
 import es.upm.karthud.track.Coord
@@ -33,7 +34,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 
-class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener, EasyPermissions.PermissionCallbacks
+class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, EasyPermissions.PermissionCallbacks
 {
     /*
     ---------------------------------------------------------
@@ -42,7 +43,7 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
      */
 
     //textviews con binding: https://cursokotlin.com/capitulo-29-view-binding-en-kotlin/
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var binding: ActivityHudBinding
 
     //objetos manager
     private val locationManager : LocationManager by lazy { getSystemService(LOCATION_SERVICE) as LocationManager }
@@ -75,7 +76,7 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
     override fun onCreate(savedInstanceState: Bundle?)
     {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
+        binding = ActivityHudBinding.inflate(layoutInflater)
         setContentView(binding.root)
     }
 
@@ -170,7 +171,9 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         if (EasyPermissions.hasPermissions(this, gpsPermission))
            startGPSUnchecked()
         else
-            EasyPermissions.requestPermissions(this, getString(R.string.gps_not_granted),gpsPermissionRequest, gpsPermission)
+            EasyPermissions.requestPermissions(this, getString(R.string.gps_not_granted),
+                gpsPermissionRequest, gpsPermission
+            )
     }
 
     /**
@@ -200,7 +203,7 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
     {
         if(accelerometer == null)
         {
-            Toast.makeText(this,R.string.accelerometer_not_available, Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.accelerometer_not_available, Toast.LENGTH_LONG).show()
             binding.gForceText.visibility = View.INVISIBLE
         }
         else
@@ -226,7 +229,7 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
      */
     private fun startWeather()
     {
-        timer.schedule(initialDelayWeather,periodWeather){
+        timer.schedule(initialDelayWeather, periodWeather){
             updateTemperature(circuit.endLine.beacon1)
         }
     }
@@ -302,8 +305,8 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         binding.bestLapTime.visibility = View.VISIBLE
         binding.lastLapTime.visibility = View.VISIBLE
 
-        binding.bestLapTime.text = getString(R.string.bestLapTime, longToStringTime(bestLap))
-        binding.lastLapTime.text = getString(R.string.lastLapTime, longToStringTime(lapTimes.last()))
+        binding.bestLapTime.text = getString(R.string.best_lap_time, longToStringTime(bestLap))
+        binding.lastLapTime.text = getString(R.string.last_lap_time, longToStringTime(lapTimes.last()))
     }
 
     /*
