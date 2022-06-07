@@ -1,3 +1,8 @@
+/**
+ * Clase que obtiene los puntos de intersección con la linea de meta
+ * @author Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
+ */
+
 package es.upm.karthud.track
 
 import android.location.Location
@@ -6,55 +11,81 @@ import kotlin.math.min
 
 class Circuit(val endLine: Checkpoint)
 {
-    //m is longitude/latitude. x is in latitude and y in longitude
+    //y = mx + a es la formula que vamos a usar
+    //m está en longitude/latitude. x es latitude e y in longitud
     private val mEndLine: Double by lazy {computeM(endLine.beacon1, endLine.beacon2)}
     private val aEndLine: Double by lazy {computeA(mEndLine, endLine.beacon1)}
 
-    //only used for intersectionInEndLine
+    //usadas para ubicar la interseccion
     private val maxLatitude: Double by lazy { max(endLine.beacon1.latitude, endLine.beacon2.latitude) }
     private val minLatitude: Double by lazy { min(endLine.beacon1.latitude, endLine.beacon2.latitude) }
     private val maxLongitude: Double by lazy { max(endLine.beacon1.longitude, endLine.beacon2.longitude) }
     private val minLongitude: Double by lazy { min(endLine.beacon1.longitude, endLine.beacon2.longitude) }
 
-
-    private fun computeM(startCoord: Coord, endCoord: Coord): Double
+    /**
+     * Calcula la pendiente de la recta
+     * @see computeA
+     */
+    private fun computeM(start: Coord, end: Coord): Double
     {
-        return (endCoord.longitude - startCoord.longitude) / (endCoord.latitude - startCoord.latitude)
+        return (end.longitude - start.longitude) / (end.latitude - start.latitude)
     }
 
-    private fun computeA(m: Double, startCoord: Coord): Double
+    /**
+     * Calcula el desplazamiento de la recta
+     * @see computeM
+     */
+    private fun computeA(m: Double, start: Coord): Double
     {
-        return startCoord.longitude - (m*startCoord.latitude)
+        return start.longitude - (m*start.latitude)
     }
 
-    private fun computeIntersection(startCoord: Coord, endCoord: Coord): Coord
+    /**
+     * Calcula el punto de corte entre la recta de meta y la recta que forman las dos coordenadas recibidas
+     * Resuelve por igualación el sistema de y=mx+a y devuelve la intersección
+     * @see intersectionInEndLine
+     */
+    private fun computeIntersection(start: Coord, end: Coord): Coord
     {
-        val mLine: Double = computeM(startCoord, endCoord)
-        val aLine: Double = computeA(mLine, startCoord)
+        val mLine: Double = computeM(start, end)
+        val aLine: Double = computeA(mLine, start)
         val interLatitude: Double = (aLine - aEndLine)/(mEndLine - mLine)
         val interLongitude : Double = (mLine*interLatitude) + aLine
         return Coord(interLatitude, interLongitude)
     }
 
+    /**
+     * Comprueba si la intersección está dentro de la recta de meta
+     * @see computeIntersection
+     */
     private fun intersectionInEndLine(point: Coord): Boolean
     {
         return (point.latitude in minLatitude..maxLatitude) && (point.longitude in minLongitude..maxLongitude)
     }
 
-    private fun lineRatio(startCoord: Coord, endCoord: Coord, intersection: Coord): Double
+    /**
+     * Hace la proporción de ver donde está el punto de corte dentro de la recta entre las dos
+     * coordenadas medidas, en tantos por uno
+     * @see timestampLineCrossed
+     */
+    private fun lineRatio(start: Coord, end: Coord, intersection: Coord): Double
     {
-        return (intersection.latitude - startCoord.latitude)/(endCoord.latitude-startCoord.latitude)
+        return (intersection.latitude - start.latitude)/(end.latitude-start.latitude)
     }
 
-    fun timeStampLineCrossed(previousLocation: Location, actualLocation: Location): Long?
+    /**
+     * Devuelve la marca de tiempo estimada de cuando se ha cruzado la linea de meta,
+     * o null si no se ha cruzado
+     */
+    fun timestampLineCrossed(previousLocation: Location, actualLocation: Location): Long?
     {
         var result: Long? = null
-        val previousCoord = Coord(previousLocation.latitude, previousLocation.longitude)
-        val actualCoord = Coord(actualLocation.latitude, actualLocation.longitude)
-        val intersection: Coord = computeIntersection(previousCoord,actualCoord)
+        val previous = Coord(previousLocation.latitude, previousLocation.longitude)
+        val actual = Coord(actualLocation.latitude, actualLocation.longitude)
+        val intersection: Coord = computeIntersection(previous,actual)
         if (intersectionInEndLine(intersection))
         {
-            val ratio: Double = lineRatio(previousCoord, actualCoord, intersection)
+            val ratio: Double = lineRatio(previous, actual, intersection)
             result = (previousLocation.time + ((actualLocation.time - previousLocation.time) * ratio).toLong())
         }
         return result

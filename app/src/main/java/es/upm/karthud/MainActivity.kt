@@ -4,7 +4,6 @@
 
 package es.upm.karthud
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -22,39 +21,24 @@ import es.upm.karthud.databinding.ActivityMainBinding
 import es.upm.karthud.track.Checkpoint
 import es.upm.karthud.track.Circuit
 import es.upm.karthud.track.Coord
-import es.upm.karthud.weather.OpenWeatherMapAPI
-import java.lang.Exception
-import java.util.Timer
-import kotlin.concurrent.schedule
-import kotlin.math.roundToInt
-import kotlin.math.abs
+import es.upm.karthud.weather.WeatherManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import java.util.*
+import kotlin.concurrent.schedule
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 
 class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener, EasyPermissions.PermissionCallbacks
 {
-    //gestion de permisos
-    private val gpsPermission: String = Manifest.permission.ACCESS_FINE_LOCATION
-    private val gpsPermissionRequest : Int = 123
-
-    //constantes
-    private val minTimeMs: Long = 250
-    private val minDistance : Float = 0.0f
-    private val msToKmh : Double = 3.6
-    private val initialDelayWeather: Long = 1000
-    private val periodWeather: Long = 600000 //10 minutes
-    private val periodAccelerometer : Int = 1000000 //1s = 1000000 us
     /*
-    Accelerometer, SENSOR_DELAY_FASTEST: 18-20 ms
-    Accelerometer, SENSOR_DELAY_GAME: 37-39 ms
-    Accelerometer, SENSOR_DELAY_UI: 85-87 ms
-    Accelerometer, SENSOR_DELAY_NORMAL: 215-230 ms
+    ---------------------------------------------------------
+        Variables
+    ---------------------------------------------------------
      */
 
     //textviews con binding: https://cursokotlin.com/capitulo-29-view-binding-en-kotlin/
@@ -64,22 +48,21 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
     private val locationManager : LocationManager by lazy { getSystemService(LOCATION_SERVICE) as LocationManager }
     private val sensorManager: SensorManager by lazy {getSystemService(SENSOR_SERVICE) as SensorManager}
 
-    //sensores
     private val accelerometer : Sensor? by lazy {sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)}
 
-    //timer
     private val timer: Timer by lazy { Timer("Weather",false) }
 
-    //variables
     private var speed: Float = 0.0f
-    private var lap: Int = 0
+
     private var timestampStartLap : Long = 0
     private var timestampEndLap : Long? = null
 
+    private var lap: Int = 0
     private var bestLap : Long = Long.MAX_VALUE
+    private var lapTimes : ArrayList<Long> = arrayListOf<Long>()
 
     private var lastLocation: Location? = null
-    private var lapTimes : ArrayList<Long> = arrayListOf<Long>()
+
     private var circuit: Circuit = Circuit(Checkpoint(
         Coord(40.43009068580006, -3.4454841660571036),
         Coord(40.430592940063164, -3.4446419524948317))) //rotonda henakart
@@ -96,7 +79,8 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         setContentView(binding.root)
     }
 
-    override fun onStart() {
+    override fun onStart()
+    {
         super.onStart()
         binding.chronometer.start()
 
@@ -134,6 +118,11 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         Callbacks de manejo de permisos
     ---------------------------------------------------------
      */
+    /**
+     * Pedimos los permisos con EasyPermissions
+     * @see onPermissionsGranted
+     * @see onPermissionsDenied
+     */
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>,
                                             grantResults: IntArray)
     {
@@ -141,12 +130,23 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this)
     }
 
+    /**
+     * Si tenemos los permisos arrancamos el gps
+     * @see onRequestPermissionsResult
+     * @see onPermissionsDenied
+     */
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>)
     {
-        Toast.makeText(this, "Permisos concedidos, iniciando GPS", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.gps_granted, Toast.LENGTH_SHORT).show()
         startGPSUnchecked()
     }
 
+    /**
+     * Si no tenemos los permisos, dejamos algunos textos por defecto. Si los permisos están
+     * permanentemente denegados, avisamos al usuario para que se lo piense
+     * @see onRequestPermissionsResult
+     * @see onPermissionsGranted
+     */
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>)
     {
         binding.speedText.text = getString(R.string.kmh,"?")
@@ -183,11 +183,19 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistance, this)
     }
 
+    /**
+     * Para las actualizaciones del gps
+     * @see checkAndStartGPS
+     */
     private fun stopGPS()
     {
         locationManager.removeUpdates(this)
     }
 
+    /**
+     * Arranca el acelerometro si lo hay, y si no notifica que no lo hay
+     * @see stopAccelerometer
+     */
     private fun startAccelerometer()
     {
         if(accelerometer == null)
@@ -201,19 +209,32 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         }
     }
 
+    /**
+     * Para el acelerometro si lo hay
+     * @see startAccelerometer
+     */
     private fun stopAccelerometer()
     {
-        if (accelerometer != null)
-            sensorManager.unregisterListener(this, accelerometer)
-    }
-
-    private fun startWeather()
-    {
-        timer.schedule(initialDelayWeather,periodWeather){
-            getTemperature(circuit.endLine.beacon1)
+        accelerometer.let {
+            sensorManager.unregisterListener(this, it)
         }
     }
 
+    /**
+     * Arranca el timer para hacer consultas de la previsión del tiempo
+     * @see stopWeather
+     */
+    private fun startWeather()
+    {
+        timer.schedule(initialDelayWeather,periodWeather){
+            updateTemperature(circuit.endLine.beacon1)
+        }
+    }
+
+    /**
+     * Para el timer para que no se hagan más consultas a la api del tiempo
+     * @see startWeather
+     */
     private fun stopWeather()
     {
         timer.cancel()
@@ -226,25 +247,6 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
      */
 
 
-    private fun longToStringTime(l: Long): String
-    {
-        fun Long.format(digits: Int) = "%0${digits}d".format(this)
-
-        val miliSeconds = l % 1000
-        val seconds = (l / 1000) % 60
-        val minutes = (l / 1000) / 60
-        return "$minutes:${seconds.format(2)}:${miliSeconds.format(3)}"
-    }
-
-    private fun updateUILaps()
-    {
-        binding.bestLapTime.visibility = View.VISIBLE
-        binding.lastLapTime.visibility = View.VISIBLE
-
-        binding.bestLapTime.text = getString(R.string.bestLapTime, longToStringTime(bestLap))
-        binding.lastLapTime.text = getString(R.string.lastLapTime, longToStringTime(lapTimes.last()))
-    }
-
     override fun onLocationChanged(l: Location)
     {
         //cuando empieza la app
@@ -254,7 +256,8 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         }
         //si tenemos dos puntos vemos si hay corte
         lastLocation?.let { itLocation ->
-            timestampEndLap = circuit.timeStampLineCrossed(itLocation, l) //null si no hay corte, timestamp si lo hay
+            timestampEndLap = circuit.timestampLineCrossed(itLocation, l)
+            // Si hay timestamp es que hemos cruzado meta
             timestampEndLap?.let { itLong ->
                 if (lap > 0)
                 {
@@ -266,20 +269,54 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
                 }
                 lap++
                 timestampStartLap = itLong
-                //faltaria cuadrar bien los ms
+                //faltaria cuadrar bien los ms pero con esto reiniciamos el cronometro
                 binding.chronometer.base = SystemClock.elapsedRealtime()
                 }
         }
 
+        //guaardamos la anterior localizacion y pasamos la velocidad a km por hora truncado a un decimal
         lastLocation = l
         speed = ((l.speed * msToKmh * 10.0).roundToInt() / 10.0).toFloat()
 
+        //mostramos la vuelta y la velocidad
         binding.lapText.text = getString(R.string.lap, lap)
         binding.speedText.text = getString(R.string.kmh,speed.toString())
     }
 
+    /**
+     * Muestra la mejor vuelta y la última en la pantalla
+     * @see onLocationChanged
+     */
+    private fun updateUILaps()
+    {
+        fun longToStringTime(l: Long): String
+        {
+            fun Long.format(digits: Int) = "%0${digits}d".format(this)
+
+            val miliSeconds = l % 1000
+            val seconds = (l / 1000) % 60
+            val minutes = (l / 1000) / 60
+            return "$minutes:${seconds.format(2)}:${miliSeconds.format(3)}"
+        }
+
+        binding.bestLapTime.visibility = View.VISIBLE
+        binding.lastLapTime.visibility = View.VISIBLE
+
+        binding.bestLapTime.text = getString(R.string.bestLapTime, longToStringTime(bestLap))
+        binding.lastLapTime.text = getString(R.string.lastLapTime, longToStringTime(lapTimes.last()))
+    }
+
+    /*
+    ---------------------------------------------------------
+        Callback de SensorEventListener
+    ---------------------------------------------------------
+     */
+
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) {}
 
+    /**
+     * Calculamos las fuerzas G y las mostramos
+     */
     override fun onSensorChanged(se: SensorEvent?)
     {
         /*
@@ -294,43 +331,31 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
         - combinada: teorema de pitagoras
         Se usara solamente la lateral
          */
-        if (se != null)
-        {
-            val lat = abs(se.values[1].toDouble()) / SensorManager.GRAVITY_EARTH
+        se?.let { event ->
+            val lat = abs(event.values[1].toDouble()) / SensorManager.GRAVITY_EARTH
             binding.gForceText.text = getString(R.string.gForce, lat)
         }
 
     }
 
-    private fun getRetrofit(): Retrofit
-    {
-        return Retrofit.Builder()
-            .baseUrl("https://api.openweathermap.org/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-    }
-
-    private fun getTemperature(c: Coord)
+    /*
+   ---------------------------------------------------------
+       Actualización de la temperatura
+   ---------------------------------------------------------
+    */
+    /**
+     * Actualiza la temperatura con una corrutina para llamar a la API en otro hilo y lo muestra
+     * @see WeatherManager.getTemperature
+     */
+    private fun updateTemperature(c: Coord)
     {
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val call = getRetrofit()
-                    .create(OpenWeatherMapAPI::class.java)
-                    .oneCallAPI(
-                        c.latitude,
-                        c.longitude,
-                        "a6b8ce9e32c991c71947233b1a6cf54f",
-                        "es",
-                        "metric"
-                    )
-                val response = call.body()
+            try
+            {
+                val temp: Int? = WeatherManager.getTemperature(c)
                 runOnUiThread {
-                    if(call.isSuccessful)
-                    {
-                        val temp: Int? = response?.main?.temp?.toInt()
-                        if(temp != null)
-                            binding.tempText.text = getString(R.string.temp, temp)
-                    }
+                    if(temp != null)
+                        binding.tempText.text = getString(R.string.temp, temp)
                     else
                         Toast.makeText(applicationContext, R.string.weather_not_available, Toast.LENGTH_SHORT).show()
                 }
@@ -343,5 +368,4 @@ class MainActivity : AppCompatActivity(), LocationListener, SensorEventListener,
             }
         }
     }
-
 }
