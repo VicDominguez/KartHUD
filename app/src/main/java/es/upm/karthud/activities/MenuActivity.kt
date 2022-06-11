@@ -24,7 +24,10 @@ class MenuActivity : AppCompatActivity()
         }
 
         binding.viewButton.setOnClickListener{
-            Toast.makeText(this,"TODO",Toast.LENGTH_LONG).show()
+            val intent = Intent(it.context, HistoricActivity::class.java)
+            it.context.startActivity(intent)
         }
+
+        binding.closeMenuButton.setOnClickListener { finish() }
     }
 }

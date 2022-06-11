@@ -19,6 +19,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import es.upm.karthud.*
 import es.upm.karthud.databinding.ActivityHudBinding
+import es.upm.karthud.persistence.IKartHUDDao
+import es.upm.karthud.persistence.Lap
+import es.upm.karthud.persistence.Session
 import es.upm.karthud.track.Checkpoint
 import es.upm.karthud.track.Circuit
 import es.upm.karthud.track.Coord
@@ -59,14 +62,18 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     private var timestampEndLap : Long? = null
 
     private var lap: Int = 0
-    private var bestLap : Long = Long.MAX_VALUE
-    private var lapTimes : ArrayList<Long> = arrayListOf<Long>()
+    private var timeBestLap : Long = Long.MAX_VALUE
+    private var timeLastLap : Long = Long.MAX_VALUE
 
     private var lastLocation: Location? = null
 
-    private var circuit: Circuit = Circuit(Checkpoint(
-        Coord(40.43009068580006, -3.4454841660571036),
-        Coord(40.430592940063164, -3.4446419524948317))) //rotonda henakart
+    private var circuit: Circuit = Circuit(
+        "Rotonda Henakart",
+        Checkpoint(Coord(40.43009068580006, -3.4454841660571036),
+            Coord(40.430592940063164, -3.4446419524948317))) //rotonda henakart
+
+    private val dao : IKartHUDDao by lazy { InitApp.database.dao() }
+    private var sessionId : Long? = null
 
     /*
     ---------------------------------------------------------
@@ -78,11 +85,15 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
         super.onCreate(savedInstanceState)
         binding = ActivityHudBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.closeHudButton.setOnClickListener { finish() }
     }
 
     override fun onStart()
     {
         super.onStart()
+
+        insertNewSession()
+
         binding.chronometer.start()
 
         startAccelerometer()
@@ -109,6 +120,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     override fun onDestroy()
     {
         super.onDestroy()
+        removeSessionEmpty()
         stopAccelerometer()
         stopGPS()
         stopWeather()
@@ -264,11 +276,15 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
             timestampEndLap?.let { itLong ->
                 if (lap > 0)
                 {
-                    val timeElapsed = itLong-timestampStartLap
-                    if(timeElapsed < bestLap)
-                        bestLap = timeElapsed
-                    lapTimes.add(timeElapsed)
+                    timeLastLap = itLong-timestampStartLap
+                    
+                    insertNewLap(timeLastLap, timestampStartLap)
+
+                    if(timeLastLap < timeBestLap)
+                        timeBestLap = timeLastLap
+                    
                     updateUILaps()
+
                 }
                 lap++
                 timestampStartLap = itLong
@@ -302,11 +318,11 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
             return "$minutes:${seconds.format(2)}:${miliSeconds.format(3)}"
         }
 
-        binding.bestLapTime.visibility = View.VISIBLE
-        binding.lastLapTime.visibility = View.VISIBLE
+        binding.timeBestLapText.visibility = View.VISIBLE
+        binding.timeLastLapText.visibility = View.VISIBLE
 
-        binding.bestLapTime.text = getString(R.string.best_lap_time, longToStringTime(bestLap))
-        binding.lastLapTime.text = getString(R.string.last_lap_time, longToStringTime(lapTimes.last()))
+        binding.timeBestLapText.text = getString(R.string.best_lap_time, longToStringTime(timeBestLap))
+        binding.timeLastLapText.text = getString(R.string.last_lap_time, longToStringTime(timeLastLap))
     }
 
     /*
@@ -368,6 +384,38 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
                 runOnUiThread {
                     Toast.makeText(applicationContext, R.string.weather_not_available, Toast.LENGTH_SHORT).show()
                 }
+            }
+        }
+    }
+
+    /*
+   ---------------------------------------------------------
+       Actualización de base de datos
+   ---------------------------------------------------------
+    */
+    
+    private fun insertNewSession()
+    {
+        CoroutineScope(Dispatchers.IO).launch {
+            sessionId = dao.insertSession(Session(circuit.name, System.currentTimeMillis()))
+        }
+    }
+
+    private fun insertNewLap(time: Long, timestampStartLap: Long)
+    {
+        sessionId?.let { id ->
+            CoroutineScope(Dispatchers.IO).launch {
+                dao.insertLap(Lap(time,timestampStartLap, id))
+            }
+        }
+    }
+
+    private fun removeSessionEmpty()
+    {
+        if(this.lap < 2)
+        {
+            CoroutineScope(Dispatchers.IO).launch {
+                dao.deleteSessionById(sessionId!!)
             }
         }
     }

@@ -9,7 +9,7 @@ import android.location.Location
 import kotlin.math.max
 import kotlin.math.min
 
-class Circuit(val endLine: Checkpoint)
+class Circuit(val name: String, val endLine: Checkpoint)
 {
     //y = mx + a es la formula que vamos a usar
     //m está en longitude/latitude. x es latitude e y in longitud

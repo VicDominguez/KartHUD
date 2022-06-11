@@ -32,7 +32,7 @@
         app:layout_constraintVertical_bias="0.2" />
 
     <TextView
-        android:id="@+id/lastLapTime"
+        android:id="@+id/timeLastLapText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/last_lap_time"
@@ -45,12 +45,12 @@
         app:layout_constraintVertical_bias="0.1"/>
 
     <TextView
-        android:id="@+id/bestLapTime"
+        android:id="@+id/timeBestLapText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/best_lap_time"
         android:visibility="invisible"
-        app:layout_constraintStart_toStartOf="@+id/lastLapTime"
+        app:layout_constraintStart_toStartOf="@+id/timeLastLapText"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
@@ -81,6 +81,18 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintHorizontal_bias="0.9"
+        app:layout_constraintVertical_bias="0.9" />
+
+    <Button
+        android:id="@+id/closeHudButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/close_button"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintVertical_bias="0.9" />
 
     <Chronometer
