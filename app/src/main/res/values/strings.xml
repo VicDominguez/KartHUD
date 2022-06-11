@@ -6,8 +6,10 @@
     <string name="gForce">%.2f G</string>
     <string name="best_lap_time">Mejor vuelta: %s</string>
     <string name="last_lap_time">Última vuelta: %s</string>
-    <string name="start_button">Iniciar</string>
+    <string name="select_track_button">Elegir circuito</string>
+    <string name="start_button">Iniciar tanda</string>
     <string name="view_button">Ver historial</string>
+    <string name="go_back_button">Volver atrás</string>
     <string name="close_button">Fin</string>
     <string name="gps_granted">Permisos concedidos, iniciando GPS</string>
     <string name="gps_not_granted">La app necesita permiso para acceder al gps para obtener la velocidad</string>

@@ -2,10 +2,8 @@ package es.upm.karthud.activities
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import es.upm.karthud.databinding.ActivityMenuBinding
-
 
 class MenuActivity : AppCompatActivity()
 {
@@ -18,8 +16,8 @@ class MenuActivity : AppCompatActivity()
 
         setContentView(binding.root)
 
-        binding.startButton.setOnClickListener{
-            val intent = Intent(it.context, HUDActivity::class.java)
+        binding.selectTrackButton.setOnClickListener{
+            val intent = Intent(it.context, SelectCircuitActivity::class.java)
             it.context.startActivity(intent)
         }
 

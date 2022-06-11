@@ -6,10 +6,11 @@
 package es.upm.karthud.track
 
 import android.location.Location
+import java.io.Serializable
 import kotlin.math.max
 import kotlin.math.min
 
-class Circuit(val name: String, val endLine: Checkpoint)
+class Circuit(val name: String, val endLine: Checkpoint): Serializable
 {
     //y = mx + a es la formula que vamos a usar
     //m está en longitude/latitude. x es latitude e y in longitud
@@ -89,5 +90,9 @@ class Circuit(val name: String, val endLine: Checkpoint)
             result = (previousLocation.time + ((actualLocation.time - previousLocation.time) * ratio).toLong())
         }
         return result
+    }
+
+    override fun toString(): String {
+        return name
     }
 }

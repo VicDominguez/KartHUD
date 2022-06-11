@@ -20,6 +20,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KartHUD">
         <activity
+            android:name=".activities.SelectCircuitActivity"
+            android:exported="false" />
+        <activity
             android:name=".activities.HistoricActivity"
             android:exported="false" />
         <activity
@@ -28,13 +31,14 @@
             android:screenOrientation="fullSensor">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
             android:name=".activities.HUDActivity"
             android:exported="true"
-            android:screenOrientation="landscape">
-        </activity>
+            android:screenOrientation="landscape"></activity>
     </application>
+
 </manifest>

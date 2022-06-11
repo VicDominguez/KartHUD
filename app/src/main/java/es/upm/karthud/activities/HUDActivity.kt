@@ -67,10 +67,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
 
     private var lastLocation: Location? = null
 
-    private var circuit: Circuit = Circuit(
-        "Rotonda Henakart",
-        Checkpoint(Coord(40.43009068580006, -3.4454841660571036),
-            Coord(40.430592940063164, -3.4446419524948317))) //rotonda henakart
+    private lateinit var circuit: Circuit
 
     private val dao : IKartHUDDao by lazy { InitApp.database.dao() }
     private var sessionId : Long? = null
@@ -85,6 +82,10 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
         super.onCreate(savedInstanceState)
         binding = ActivityHudBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        circuit = intent.extras?.get("circuit") as Circuit
+        binding.circuitText.text = circuit.name
+
         binding.closeHudButton.setOnClickListener { finish() }
     }
 
