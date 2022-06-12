@@ -14,9 +14,11 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.SystemClock
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.database.DatabaseReference
 import es.upm.karthud.*
 import es.upm.karthud.databinding.ActivityHudBinding
 import es.upm.karthud.persistence.IKartHUDDao
@@ -69,8 +71,12 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
 
     private lateinit var circuit: Circuit
 
-    private val dao : IKartHUDDao by lazy { InitApp.database.dao() }
+    //database
+    private val remoteDbReference: DatabaseReference = InitApp.remoteDbReference
+    private val dao : IKartHUDDao by lazy { InitApp.localDb.dao() }
     private var sessionId : Long? = null
+    private val userId by lazy { InitApp.remoteAuthInstance.currentUser?.uid ?: "" }
+    private val baseChildDb by lazy { remoteDbReference.child(userId).child("sessions").child(sessionId.toString()) }
 
     /*
     ---------------------------------------------------------
@@ -394,11 +400,17 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
        Actualización de base de datos
    ---------------------------------------------------------
     */
+
     
     private fun insertNewSession()
     {
         CoroutineScope(Dispatchers.IO).launch {
-            sessionId = dao.insertSession(Session(circuit.name, System.currentTimeMillis()))
+            val session = Session(circuit.name, System.currentTimeMillis(), InitApp.remoteAuthInstance.uid?:"")
+            sessionId = dao.insertSession(session)
+            session.idSession = sessionId ?: 0
+
+            //TODO añadir el path de usuarios..
+            baseChildDb.setValue(session.fields2Map())
         }
     }
 
@@ -406,7 +418,10 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     {
         sessionId?.let { id ->
             CoroutineScope(Dispatchers.IO).launch {
-                dao.insertLap(Lap(time,timestampStartLap, id))
+                val lap = Lap(time,timestampStartLap, id)
+                val idLap = dao.insertLap(lap)
+                lap.idLap = idLap
+                baseChildDb.child("laps").child(idLap.toString()).setValue(lap.fields2Map())
             }
         }
     }
@@ -417,6 +432,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
         {
             CoroutineScope(Dispatchers.IO).launch {
                 dao.deleteSessionById(sessionId!!)
+                baseChildDb.removeValue()
             }
         }
     }

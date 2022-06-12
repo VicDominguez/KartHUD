@@ -21,7 +21,50 @@ class SelectCircuitActivity : AppCompatActivity(), AdapterView.OnItemSelectedLis
     private val arrayAdapter: ArrayAdapter<Circuit> by lazy { ArrayAdapter(applicationContext, android.R.layout.simple_spinner_dropdown_item)}
 
     private var circuit: Circuit? = null
+    
+    private fun obtainTracks()
+    {
+        val query: Query = InitApp.remoteDbReference.child("tracks")
+        var name: String
+        var values: Map<String,Any>
+        var beacon1Map: Map<String, String>
+        var beacon2Map: Map<String, String>
+        var beacon1Latitude : Double
+        var beacon1Longitude : Double
+        var beacon2Latitude : Double
+        var beacon2Longitude : Double
+        var newCircuit : Circuit
 
+        query.addListenerForSingleValueEvent(object : ValueEventListener
+        {
+            override fun onDataChange(dataSnapshot: DataSnapshot)
+            {
+                if (dataSnapshot.exists())
+                {
+                    for (track in dataSnapshot.children)
+                    {
+                        name = track?.key ?: ""
+                        values = track.value as HashMap<String, Any>
+                        beacon1Map = values["beacon1"] as HashMap<String, String>
+                        beacon2Map = values["beacon2"] as HashMap<String, String>
+                        beacon1Latitude = beacon1Map["latitude"]?.toDouble() ?: 0.0
+                        beacon1Longitude = beacon1Map["longitude"]?.toDouble() ?: 0.0
+                        beacon2Latitude = beacon2Map["latitude"]?.toDouble() ?: 0.0
+                        beacon2Longitude = beacon2Map["longitude"]?.toDouble() ?: 0.0
+                        newCircuit = Circuit(name, Checkpoint(
+                            Coord(beacon1Latitude, beacon1Longitude),
+                            Coord(beacon2Latitude, beacon2Longitude)))
+
+                        arrayAdapter.add(newCircuit)
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SelectCircuitFailed", error.message)}
+        })
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?)
     {
         super.onCreate(savedInstanceState)
@@ -45,43 +88,8 @@ class SelectCircuitActivity : AppCompatActivity(), AdapterView.OnItemSelectedLis
         arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         binding.spinner.adapter = arrayAdapter
         binding.spinner.onItemSelectedListener = this
-
-        val reference: DatabaseReference = FirebaseDatabase.getInstance().reference
-
-        val query: Query = reference.child("tracks")
-
-        query.addListenerForSingleValueEvent(object : ValueEventListener
-        {
-            override fun onDataChange(dataSnapshot: DataSnapshot)
-            {
-                if (dataSnapshot.exists())
-                {
-                    // dataSnapshot is the "issue" node with all children with id 0
-                    for (issue in dataSnapshot.children)
-                    {
-                        val name : String = issue?.key ?: ""
-                        val values: HashMap<String, Any> = issue.value as HashMap<String, Any>
-                        val beacon1Map : HashMap<String, String> = values["beacon1"] as HashMap<String, String>
-                        val beacon2Map : HashMap<String, String> = values["beacon2"] as HashMap<String, String>
-                        val beacon1Latitude : Double = beacon1Map["latitude"]?.toDouble() ?: 0.0
-                        val beacon1Longitude : Double = beacon1Map["longitude"]?.toDouble() ?: 0.0
-                        val beacon2Latitude : Double = beacon2Map["latitude"]?.toDouble() ?: 0.0
-                        val beacon2Longitude : Double = beacon2Map["longitude"]?.toDouble() ?: 0.0
-
-                        val temp = Circuit(name, Checkpoint(
-                            Coord(beacon1Latitude, beacon1Longitude),
-                            Coord(beacon2Latitude, beacon2Longitude)
-                        ))
-
-                        arrayAdapter.add(temp)
-                    }
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("SelectCircuitFailed", error.message)}
-        })
-
+        
+        obtainTracks()
     }
 
     override fun onStart() {

@@ -4,15 +4,18 @@
     <string name="lap">Vuelta: %d</string>
     <string name="temp">%d ºC</string>
     <string name="gForce">%.2f G</string>
+    <string name="welcome_user">Bienvenido %s</string>
     <string name="best_lap_time">Mejor vuelta: %s</string>
     <string name="last_lap_time">Última vuelta: %s</string>
     <string name="select_track_button">Elegir circuito</string>
     <string name="start_button">Iniciar tanda</string>
     <string name="view_button">Ver historial</string>
     <string name="go_back_button">Volver atrás</string>
-    <string name="close_button">Fin</string>
+    <string name="close_button">Cerrar</string>
     <string name="gps_granted">Permisos concedidos, iniciando GPS</string>
     <string name="gps_not_granted">La app necesita permiso para acceder al gps para obtener la velocidad</string>
     <string name="accelerometer_not_available">Acelerómetro no disponible, no se muestran las fuerzas G"</string>
     <string name="weather_not_available">Servicio de previsión del tiempo no disponible</string>
+    <string name="change_user">Cambiar de usuario</string>
+    <string name="logout_ok">Sesión cerrada con éxito</string>
 </resources>

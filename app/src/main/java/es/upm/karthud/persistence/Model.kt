@@ -3,6 +3,7 @@ package es.upm.karthud.persistence
 import androidx.room.*
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.HashMap
 
 
 @Entity(
@@ -39,13 +40,36 @@ data class Lap(val time: Long, val startTimestamp: Long, val session: Long)
         }
         return "Tiempo: ${longToStringTime(time)}, fecha: ${sdf.format(startTimestamp)}"
     }
+
+    fun fields2Map(includeId: Boolean = false, includeFk: Boolean = false) : Map<String,String>
+    {
+        val map: HashMap<String,String> = HashMap()
+        map["time"] = time.toString()
+        map["startTimestamp"] = startTimestamp.toString()
+        if (includeFk)
+            map["session"] = session.toString()
+        if (includeId)
+            map["idLap"] = idLap.toString()
+        return map
+    }
 }
 
 @Entity(tableName = "session")
-data class Session(val track: String, val startTimestamp: Long)
+data class Session(val track: String, val startTimestamp: Long, val userId: String)
 {
     @PrimaryKey(autoGenerate = true)
     var idSession: Long = 0
+    fun fields2Map(includeId: Boolean = false, includeUserId: Boolean = false) : Map<String,String>
+    {
+        val map: HashMap<String,String> = HashMap()
+        map["track"] = track
+        map["startTimestamp"] = startTimestamp.toString()
+        if (includeId)
+            map["idSession"] = idSession.toString()
+        if (includeUserId)
+            map["userId"] = userId
+        return map
+    }
 }
 
 data class SessionWithLaps(

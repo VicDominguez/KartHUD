@@ -32,12 +32,12 @@ class HistoricActivity : AppCompatActivity()
         binding = ActivityHistoricBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        this.dao = InitApp.database.dao()
+        this.dao = InitApp.localDb.dao()
 
         setupRecyclerView()
 
         CoroutineScope(Dispatchers.IO).launch {
-            data = dao.getSessionWithLaps()
+            data = dao.getSessionWithLaps(InitApp.remoteAuthInstance.uid ?: "")
             runOnUiThread {
                 binding.rvSessionList.swapAdapter(RecyclerAdapter(data),true)
             }
