@@ -1,3 +1,8 @@
+/**
+ * Contiene la instancia de la base de datos
+ * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
+ */
+
 package es.upm.karthud.persistence
 
 import android.content.Context
@@ -6,16 +11,16 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(entities = [Lap::class, Session::class], version = 1, exportSchema = false)
-abstract class KartHUDDatabase : RoomDatabase()
+abstract class AppDatabase : RoomDatabase()
 {
-    abstract fun dao(): IKartHUDDao
+    abstract fun dao(): IAppDao
 
     companion object
     {
         @Volatile
-        private var INSTANCE: KartHUDDatabase? = null
+        private var INSTANCE: AppDatabase? = null
 
-        fun getDatabase(context: Context): KartHUDDatabase
+        fun getDatabase(context: Context): AppDatabase
         {
             val tempInstance = INSTANCE
             if (tempInstance != null)
@@ -26,7 +31,7 @@ abstract class KartHUDDatabase : RoomDatabase()
             {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
-                    KartHUDDatabase::class.java,
+                    AppDatabase::class.java,
                     "karthud.db")
                     .fallbackToDestructiveMigration()
                     .build()

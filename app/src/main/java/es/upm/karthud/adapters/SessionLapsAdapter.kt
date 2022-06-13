@@ -1,14 +1,20 @@
-package es.upm.karthud
+/**
+ * Adaptador para enganchar las sesiones con las vueltas al recycler view
+ * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
+ */
+
+package es.upm.karthud.adapters
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import es.upm.karthud.R
 
 import es.upm.karthud.persistence.SessionWithLaps
 
-class RecyclerAdapter(private var sessions: MutableList<SessionWithLaps>): RecyclerView.Adapter<RecyclerAdapter.ViewHolder>()
+class SessionLapsAdapter(var sessions: MutableList<SessionWithLaps>): RecyclerView.Adapter<SessionLapsAdapter.ViewHolder>()
 {
     class ViewHolder(v: View): RecyclerView.ViewHolder(v)
     {

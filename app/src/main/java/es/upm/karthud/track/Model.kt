@@ -1,5 +1,6 @@
 /**
- * Data class para la funcionalidad de los circuitos
+ * Data class para la funcionalidad de los circuitos. Implementa la interfaz serializable para
+ * poder subirse a Firebase
  * @author Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
  */
 

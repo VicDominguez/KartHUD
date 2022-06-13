@@ -92,7 +92,8 @@ class Circuit(val name: String, val endLine: Checkpoint): Serializable
         return result
     }
 
-    override fun toString(): String {
-        return name
-    }
+    /**
+     * Devolvemos únicamente el nombre
+     */
+    override fun toString(): String = name
 }

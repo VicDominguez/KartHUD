@@ -1,58 +1,72 @@
+/**
+ * Activity principal que no se muestra al usuario. Llama al menú de inicio si el usuario está logeado
+ * y si no llama a FirebaseAuthUI para autentificarse
+ * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
+ */
+
 package es.upm.karthud.activities
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.firebase.ui.auth.AuthUI
 import com.google.firebase.auth.FirebaseAuth
 import es.upm.karthud.R
+import es.upm.karthud.Utils.remoteAuthInstance
 
 class StartActivity : AppCompatActivity()
 {
-    private lateinit var firebaseAuth: FirebaseAuth
-    private val RC_SING_IN = 1
     private lateinit var authListener : FirebaseAuth.AuthStateListener
 
+    //proveedores de autentificacion utilizados
     private val providers = arrayListOf(
         AuthUI.IdpConfig.EmailBuilder().build(),
         AuthUI.IdpConfig.GoogleBuilder().build())
 
+    //para sustituir al activity for result que está depreciado
+    private val activityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){}
+
     override fun onCreate(savedInstanceState: Bundle?)
     {
         super.onCreate(savedInstanceState)
-        firebaseAuth = FirebaseAuth.getInstance()
+
         authListener = FirebaseAuth.AuthStateListener {
-            val user = firebaseAuth.currentUser
-            if (user != null)
+            if (remoteAuthInstance.currentUser != null)
             {
-                val intent = Intent(this.applicationContext,MenuActivity::class.java)
-                startActivity(intent)
+                //si tenemos usuario, arrancamos el menu prinicpal
+                startActivity(Intent(this.applicationContext,MenuActivity::class.java))
                 finish()
             }
             else
             {
-                //TODO rehacer esto
-                startActivityForResult(AuthUI.getInstance()
+                //si no lo tenemos, abrimos el menu de login
+                val intent = AuthUI.getInstance()
                     .createSignInIntentBuilder()
                     .setIsSmartLockEnabled(false)
                     .setAvailableProviders(providers)
                     .setLogo(R.mipmap.ic_launcher)
-                    .build(),
-                RC_SING_IN)
+                    .build()
+                activityResultLauncher.launch(intent)
             }
         }
     }
 
+    /**
+     * Si se ha reiniciado el activity, añadimos el listener
+     */
     override fun onResume()
     {
         super.onResume()
-        firebaseAuth.addAuthStateListener(authListener)
+        remoteAuthInstance.addAuthStateListener(authListener)
     }
 
+    /**
+     * Si se ha parado el activity, quitamos el listener
+     */
     override fun onPause()
     {
         super.onPause()
-        firebaseAuth.removeAuthStateListener(authListener)
+        remoteAuthInstance.removeAuthStateListener(authListener)
     }
-
 }

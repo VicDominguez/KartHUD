@@ -1,13 +1,17 @@
+/**
+ * Activity que implementa el menú de inicio
+ * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
+ */
+
 package es.upm.karthud.activities
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.firebase.ui.auth.AuthUI
 import es.upm.karthud.R
+import es.upm.karthud.Utils
 import es.upm.karthud.databinding.ActivityMenuBinding
-
 
 class MenuActivity : AppCompatActivity()
 {
@@ -20,30 +24,30 @@ class MenuActivity : AppCompatActivity()
 
         setContentView(binding.root)
 
+        //texto de bienvenida
         binding.welcomeUser.text = getString(R.string.welcome_user,
-            InitApp.remoteAuthInstance.currentUser?.displayName ?: "")
+            Utils.remoteAuthInstance.currentUser?.displayName ?: "")
 
+        //botones
         binding.selectTrackButton.setOnClickListener{
-            val intent = Intent(it.context, SelectCircuitActivity::class.java)
-            it.context.startActivity(intent)
+            it.context.startActivity(Intent(it.context, SelectCircuitActivity::class.java))
         }
 
         binding.viewButton.setOnClickListener{
-            val intent = Intent(it.context, HistoricActivity::class.java)
-            it.context.startActivity(intent)
+            it.context.startActivity(Intent(it.context, HistoricActivity::class.java))
         }
 
+        //procedimiento de logout y redireccion al activity de inicio
         binding.changeUserButton.setOnClickListener{ view ->
                 AuthUI.getInstance()
                     .signOut(view.context)
                     .addOnCompleteListener {
-                        Toast.makeText(view.context, getString(R.string.logout_ok), Toast.LENGTH_SHORT).show()
-                        val intent = Intent(view.context, StartActivity::class.java)
-                        startActivity(intent)
+                        startActivity(Intent(view.context, StartActivity::class.java))
                         finish()
                     }
             }
 
+        //para cerrar la app
         binding.closeMenuButton.setOnClickListener { finish() }
     }
 }

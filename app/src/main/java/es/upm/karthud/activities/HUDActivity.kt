@@ -1,4 +1,6 @@
 /**
+ * Activity que muestra el HUD, recoge los datos de la API del tiempo y de los sensores y guarda
+ * los datos en las bbdd
  * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
  */
 
@@ -14,17 +16,17 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.SystemClock
-import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.DatabaseReference
-import es.upm.karthud.*
+import es.upm.karthud.R
+import es.upm.karthud.Utils
+import es.upm.karthud.Utils.longToStringTime
 import es.upm.karthud.databinding.ActivityHudBinding
-import es.upm.karthud.persistence.IKartHUDDao
+import es.upm.karthud.persistence.IAppDao
 import es.upm.karthud.persistence.Lap
 import es.upm.karthud.persistence.Session
-import es.upm.karthud.track.Checkpoint
 import es.upm.karthud.track.Circuit
 import es.upm.karthud.track.Coord
 import es.upm.karthud.weather.WeatherManager
@@ -53,29 +55,28 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     //objetos manager
     private val locationManager : LocationManager by lazy { getSystemService(LOCATION_SERVICE) as LocationManager }
     private val sensorManager: SensorManager by lazy {getSystemService(SENSOR_SERVICE) as SensorManager}
-
+    
+    //sensores
     private val accelerometer : Sensor? by lazy {sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)}
 
+    //api del tiempo
     private val timer: Timer by lazy { Timer("Weather",false) }
 
+    //datos
     private var speed: Float = 0.0f
-
     private var timestampStartLap : Long = 0
     private var timestampEndLap : Long? = null
-
     private var lap: Int = 0
     private var timeBestLap : Long = Long.MAX_VALUE
     private var timeLastLap : Long = Long.MAX_VALUE
-
     private var lastLocation: Location? = null
-
     private lateinit var circuit: Circuit
 
     //database
-    private val remoteDbReference: DatabaseReference = InitApp.remoteDbReference
-    private val dao : IKartHUDDao by lazy { InitApp.localDb.dao() }
+    private val remoteDbReference: DatabaseReference = Utils.remoteDbReference
+    private val dao : IAppDao by lazy { Utils.getLocalDatabase(applicationContext).dao() }
     private var sessionId : Long? = null
-    private val userId by lazy { InitApp.remoteAuthInstance.currentUser?.uid ?: "" }
+    private val userId by lazy { Utils.remoteAuthInstance.currentUser?.uid ?: "" }
     private val baseChildDb by lazy { remoteDbReference.child(userId).child("sessions").child(sessionId.toString()) }
 
     /*
@@ -89,20 +90,31 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
         binding = ActivityHudBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        //obtenemos el circuito que se nos pasó en el bundle
         circuit = intent.extras?.get("circuit") as Circuit
         binding.circuitText.text = circuit.name
-
+        
+        //listener para cerrar el hud
         binding.closeHudButton.setOnClickListener { finish() }
+
+        //ponemos valores por defecto a los textos
+        binding.gForceText.text = getString(R.string.gForce,0.0f)
+        binding.tempText.text = getString(R.string.temp,0)
+        binding.speedText.text = getString(R.string.kmh,0)
+        binding.lapText.text = getString(R.string.lap, 0)
     }
 
     override fun onStart()
     {
         super.onStart()
-
+        
+        //insertamos la nueva sesion
         insertNewSession()
 
+        //iniciamos el cronometro
         binding.chronometer.start()
 
+        //iniciamos los sensores
         startAccelerometer()
         checkAndStartGPS()
         startWeather()
@@ -111,6 +123,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     override fun onPause()
     {
         super.onPause()
+        //paramos los sensores
         stopAccelerometer()
         stopGPS()
         stopWeather()
@@ -119,6 +132,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     override fun onResume()
     {
         super.onResume()
+        //paramos los sensores
         startAccelerometer()
         checkAndStartGPS()
         startWeather()
@@ -127,7 +141,9 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     override fun onDestroy()
     {
         super.onDestroy()
-        removeSessionEmpty()
+        //elminimamos la sesion si no ha tenido vueltas
+        removeSessionIfEmpty()
+        //paramos los sensores
         stopAccelerometer()
         stopGPS()
         stopWeather()
@@ -169,8 +185,6 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
      */
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>)
     {
-        binding.speedText.text = getString(R.string.kmh,"?")
-        binding.lapText.text = getString(R.string.lap, 0)
         if (EasyPermissions.somePermissionPermanentlyDenied(this, perms))
             AppSettingsDialog.Builder(this).build().show()
     }
@@ -187,11 +201,11 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
      */
     private fun checkAndStartGPS()
     {
-        if (EasyPermissions.hasPermissions(this, gpsPermission))
+        if (EasyPermissions.hasPermissions(this, Utils.gpsPermission))
            startGPSUnchecked()
         else
             EasyPermissions.requestPermissions(this, getString(R.string.gps_not_granted),
-                gpsPermissionRequest, gpsPermission
+                Utils.gpsPermissionRequest, Utils.gpsPermission
             )
     }
 
@@ -202,7 +216,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     @SuppressLint("MissingPermission")
     private fun startGPSUnchecked()
     {
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistance, this)
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, Utils.minTimeMs, Utils.minDistance, this)
     }
 
     /**
@@ -227,7 +241,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
         }
         else
         {
-            sensorManager.registerListener(this, accelerometer, periodAccelerometer)
+            sensorManager.registerListener(this, accelerometer, Utils.periodAccelerometer)
         }
     }
 
@@ -237,18 +251,18 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
      */
     private fun stopAccelerometer()
     {
-        accelerometer.let {
-            sensorManager.unregisterListener(this, it)
-        }
+        accelerometer.let { sensorManager.unregisterListener(this, it) }
     }
 
     /**
-     * Arranca el timer para hacer consultas de la previsión del tiempo
+     * Arranca el timer para hacer consultas de la previsión del tiempo teniendo como coordenada la
+     * primera baliza de la linea de meta
      * @see stopWeather
      */
     private fun startWeather()
     {
-        timer.schedule(initialDelayWeather, periodWeather){
+        timer.schedule(Utils.initialDelayWeather, Utils.periodWeather)
+        {
             updateTemperature(circuit.endLine.beacon1)
         }
     }
@@ -267,8 +281,9 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
         Callback de LocationListener
     ---------------------------------------------------------
      */
-
-
+    /**
+     * Función que se llama cuando tenemos nueva medición del GPS
+     */
     override fun onLocationChanged(l: Location)
     {
         //cuando empieza la app
@@ -281,6 +296,8 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
             timestampEndLap = circuit.timestampLineCrossed(itLocation, l)
             // Si hay timestamp es que hemos cruzado meta
             timestampEndLap?.let { itLong ->
+                //si no es la vuelta por defecto, hemos completado vuelta asi que actualizamos
+                //la mejor y la guardamos en bbdd
                 if (lap > 0)
                 {
                     timeLastLap = itLong-timestampStartLap
@@ -302,11 +319,11 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
 
         //guaardamos la anterior localizacion y pasamos la velocidad a km por hora truncado a un decimal
         lastLocation = l
-        speed = ((l.speed * msToKmh * 10.0).roundToInt() / 10.0).toFloat()
+        speed = ((l.speed * Utils.msToKmh * 10.0).roundToInt() / 10.0).toFloat()
 
         //mostramos la vuelta y la velocidad
         binding.lapText.text = getString(R.string.lap, lap)
-        binding.speedText.text = getString(R.string.kmh,speed.toString())
+        binding.speedText.text = getString(R.string.kmh,speed)
     }
 
     /**
@@ -315,16 +332,6 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
      */
     private fun updateUILaps()
     {
-        fun longToStringTime(l: Long): String
-        {
-            fun Long.format(digits: Int) = "%0${digits}d".format(this)
-
-            val miliSeconds = l % 1000
-            val seconds = (l / 1000) % 60
-            val minutes = (l / 1000) / 60
-            return "$minutes:${seconds.format(2)}:${miliSeconds.format(3)}"
-        }
-
         binding.timeBestLapText.visibility = View.VISIBLE
         binding.timeLastLapText.visibility = View.VISIBLE
 
@@ -338,6 +345,9 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     ---------------------------------------------------------
      */
 
+    /**
+     * Cuando cambia la precisión no hacemos nada
+     */
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) {}
 
     /**
@@ -358,8 +368,8 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
         Se usara solamente la lateral
          */
         se?.let { event ->
-            val lat = abs(event.values[1].toDouble()) / SensorManager.GRAVITY_EARTH
-            binding.gForceText.text = getString(R.string.gForce, lat)
+            val lateralForce = abs(event.values[1].toDouble()) / SensorManager.GRAVITY_EARTH
+            binding.gForceText.text = getString(R.string.gForce, lateralForce)
         }
 
     }
@@ -401,32 +411,45 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
    ---------------------------------------------------------
     */
 
-    
+    /**
+     * Inserta nueva sesión en base de datos mediante corrutinas
+     * @see insertNewLap
+     */
     private fun insertNewSession()
     {
         CoroutineScope(Dispatchers.IO).launch {
-            val session = Session(circuit.name, System.currentTimeMillis(), InitApp.remoteAuthInstance.uid?:"")
+            val session = Session(circuit.name, System.currentTimeMillis(), Utils.remoteAuthInstance.uid?:"")
             sessionId = dao.insertSession(session)
+            //actualizamos la clave con la que nos da la base de datos
             session.idSession = sessionId ?: 0
-
-            //TODO añadir el path de usuarios..
+            //guardamos en firebase
             baseChildDb.setValue(session.fields2Map())
         }
     }
 
+    /**
+     * Inserta nueva vuelta en base de datos mediante corrutinas
+     * @see insertNewLap
+     */
     private fun insertNewLap(time: Long, timestampStartLap: Long)
     {
+        //si la sesión no es nula podemos insertar
         sessionId?.let { id ->
             CoroutineScope(Dispatchers.IO).launch {
                 val lap = Lap(time,timestampStartLap, id)
+                //insertamos en local
                 val idLap = dao.insertLap(lap)
                 lap.idLap = idLap
+                //insertamos en firebase
                 baseChildDb.child("laps").child(idLap.toString()).setValue(lap.fields2Map())
             }
         }
     }
 
-    private fun removeSessionEmpty()
+    /**
+     * Eliminamos la sesión si no tenemos vueltas contabilizadas, tanto en local como en firebase
+     */
+    private fun removeSessionIfEmpty()
     {
         if(this.lap < 2)
         {

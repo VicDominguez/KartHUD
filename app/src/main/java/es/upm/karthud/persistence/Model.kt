@@ -1,11 +1,19 @@
+/**
+ * Contiene las clases almacenadas en base de datos
+ * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
+ */
+
 package es.upm.karthud.persistence
 
 import androidx.room.*
-import java.text.SimpleDateFormat
-import java.util.*
-import kotlin.collections.HashMap
+import es.upm.karthud.Utils.formatoDMA
+import es.upm.karthud.Utils.formatoHMS
+import es.upm.karthud.Utils.longToStringTime
 
 
+/**
+ * Clase que guarda el tiempo de vuelta, cuándo se inició la vuelta y la sesión a la que pertenece
+ */
 @Entity(
     tableName = "lap",
     indices = [Index("session")], //para evitar column references a foreign key but it is not part of an index
@@ -22,25 +30,15 @@ data class Lap(val time: Long, val startTimestamp: Long, val session: Long)
     @PrimaryKey(autoGenerate = true)
     var idLap: Long = 0
 
-    companion object
-    {
-        val sdf = SimpleDateFormat("HH:mm:ss", Locale.ROOT)
-    }
+    /**
+     * Mostramos el tiempo y la fecha formateada a hora, minuto y segundo
+     */
+    override fun toString(): String = "Tiempo: ${longToStringTime(time)}," +
+            " fecha: ${formatoHMS.format(startTimestamp)}"
 
-    override fun toString(): String
-    {
-        fun longToStringTime(l: Long): String
-        {
-            fun Long.format(digits: Int) = "%0${digits}d".format(this)
-
-            val miliSeconds = l % 1000
-            val seconds = (l / 1000) % 60
-            val minutes = (l / 1000) / 60
-            return "$minutes:${seconds.format(2)}:${miliSeconds.format(3)}"
-        }
-        return "Tiempo: ${longToStringTime(time)}, fecha: ${sdf.format(startTimestamp)}"
-    }
-
+    /**
+     * Devolvemos los campos del objeto en un mapa, ideal para subir datos a base de datos remotas
+     */
     fun fields2Map(includeId: Boolean = false, includeFk: Boolean = false) : Map<String,String>
     {
         val map: HashMap<String,String> = HashMap()
@@ -54,11 +52,18 @@ data class Lap(val time: Long, val startTimestamp: Long, val session: Long)
     }
 }
 
+/**
+ * Clase que contiene los datos de la tanda en cuestión: Nombre del circuito, fecha de inicio y usuario que la ha realizado
+ */
 @Entity(tableName = "session")
 data class Session(val track: String, val startTimestamp: Long, val userId: String)
 {
     @PrimaryKey(autoGenerate = true)
     var idSession: Long = 0
+
+    /**
+     * Mostramos los campos del objeto a formato mapa, útil para subir datos a base de datos remotas
+     */
     fun fields2Map(includeId: Boolean = false, includeUserId: Boolean = false) : Map<String,String>
     {
         val map: HashMap<String,String> = HashMap()
@@ -72,22 +77,25 @@ data class Session(val track: String, val startTimestamp: Long, val userId: Stri
     }
 }
 
+/**
+ * Clase que contiene la sesión con sus vueltas correspondientes.
+ * @see Session
+ * @see Lap
+ */
 data class SessionWithLaps(
     @Embedded val session: Session,
     @Relation(parentColumn = "idSession", entityColumn = "session")
     val laps: List<Lap>)
 {
-    companion object
-    {
-        val dayFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ROOT)
-        val hourFormat = SimpleDateFormat("HH:mm:ss", Locale.ROOT)
-    }
+   /**
+    * Devolvemos infomación sobre cuándo se ha hecho la tanda y las vueltas realizadas
+    */
     override fun toString(): String
     {
         val stringBuilder  = StringBuilder()
-        stringBuilder.append("Sesión realiza en ${session.track} el dia " +
-                "${dayFormat.format(session.startTimestamp)} a las " +
-                "${hourFormat.format(session.startTimestamp)}.\n"
+        stringBuilder.append("Sesión realizada en ${session.track} el dia " +
+                "${formatoDMA.format(session.startTimestamp)} a las " +
+                "${formatoHMS.format(session.startTimestamp)}.\n"
         )
         laps.forEachIndexed{ index, element -> stringBuilder.append("Vuelta ${index+1}: $element \n") }
 

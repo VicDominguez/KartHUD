@@ -1,3 +1,9 @@
+/**
+ * Activity que permite elegir circuito, los cuales se obtiene de la base de datos remota
+ * para poder actualizarlos en tiempo real.
+ * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
+ */
+
 package es.upm.karthud.activities
 
 import android.content.Intent
@@ -9,10 +15,12 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
+import es.upm.karthud.R
 import es.upm.karthud.databinding.ActivitySelectCircuitBinding
 import es.upm.karthud.track.Checkpoint
 import es.upm.karthud.track.Circuit
 import es.upm.karthud.track.Coord
+import es.upm.karthud.Utils
 
 
 class SelectCircuitActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener
@@ -21,10 +29,13 @@ class SelectCircuitActivity : AppCompatActivity(), AdapterView.OnItemSelectedLis
     private val arrayAdapter: ArrayAdapter<Circuit> by lazy { ArrayAdapter(applicationContext, android.R.layout.simple_spinner_dropdown_item)}
 
     private var circuit: Circuit? = null
-    
+
+    /**
+     * Rellena el array adapter con los circuitos obtenidos de firebase
+     */
     private fun obtainTracks()
     {
-        val query: Query = InitApp.remoteDbReference.child("tracks")
+        val query: Query = Utils.remoteDbReference.child("tracks")
         var name: String
         var values: Map<String,Any>
         var beacon1Map: Map<String, String>
@@ -71,9 +82,10 @@ class SelectCircuitActivity : AppCompatActivity(), AdapterView.OnItemSelectedLis
         binding = ActivitySelectCircuitBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        //botones
         binding.startButton.setOnClickListener{
             if(circuit == null)
-                Toast.makeText(this, "Debes seleccionar un circuito", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.must_select_circuit), Toast.LENGTH_SHORT).show()
             else
             {
                 val intent = Intent(it.context, HUDActivity::class.java)
@@ -82,29 +94,23 @@ class SelectCircuitActivity : AppCompatActivity(), AdapterView.OnItemSelectedLis
             }
 
         }
-
         binding.goBackButton.setOnClickListener {finish()}
 
-        arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        //ajustes del spinner con su array adapter
+        arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinner.adapter = arrayAdapter
         binding.spinner.onItemSelectedListener = this
         
         obtainTracks()
     }
 
-    override fun onStart() {
-        super.onStart()
-
-        Log.d("Select","onStart")
-    }
-
-    override fun onItemSelected(parent: AdapterView<*>?, v: View?, position: Int, id: Long) {
+    override fun onItemSelected(parent: AdapterView<*>?, v: View?, position: Int, id: Long)
+    {
         circuit = arrayAdapter.getItem(position)
     }
 
-    override fun onNothingSelected(parent: AdapterView<*>?) {
+    override fun onNothingSelected(parent: AdapterView<*>?)
+    {
         circuit = null
     }
-
-
 }

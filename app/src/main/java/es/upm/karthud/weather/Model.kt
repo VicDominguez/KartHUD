@@ -1,5 +1,5 @@
 /**
- * Model.kt alberga todas las data class utilizadas para la API de OpenWeatherMap
+ * Alberga todas las data class utilizadas para la API de OpenWeatherMap
  * Realizada con https://json2kt.com/
  * @author: Victor Manuel Dominguez Rivas y Juan Luis Moreno Sancho
  */
